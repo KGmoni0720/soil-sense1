@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SoilSense Simulator</title>
+  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background: #f0f4f8;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 1rem;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .slider-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .slider-group span {
+      margin-left: 10px;
+      font-weight: bold;
+      color: #34495e;
+    }
+    canvas {
+      margin-top: 2rem;
+    }
+    .impact {
+      margin-top: 1rem;
+      font-size: 1.1rem;
+      color: #34495e;
+    }
+    #languageToggle {
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌱 SoilSense Simulator</h1>
+  <div class="container">
+    <select id="languageToggle">
+      <option value="en">English</option>
+      <option value="ta">தமிழ்</option>
+    </select>
+
+    <label for="moisture" id="labelMoisture">Soil Moisture (%)</label>
+    <div class="slider-group">
+      <input type="range" id="moisture" min="0" max="100" value="50" />
+      <span id="moistureValue">50%</span>
+    </div>
+
+    <label for="ph" id="labelPh">Soil pH</label>
+    <div class="slider-group">
+      <input type="range" id="ph" min="3" max="10" value="6.5" step="0.1" />
+      <span id="phValue">6.5</span>
+    </div>
+
+    <label for="fertilizer" id="labelFertilizer">Fertilizer Type</label>
+    <select id="fertilizer">
+      <option value="organic">Organic</option>
+      <option value="nitrogen">Nitrogen-rich</option>
+      <option value="phosphorus">Phosphorus-rich</option>
+      <option value="none">None</option>
+    </select>
+
+    <div class="impact" id="impactText">Crop Impact: Moderate</div>
+    <div class="impact" id="cropSuggestion">🌿 Suggested Crops: Millets, Groundnut, Cotton</div>
+
+    <button onclick="exportCSV()">📤 Export as CSV</button>
+    <canvas id="soilChart" width="400" height="200"></canvas>
+  </div>
+
+  <script>
+    const moistureInput = document.getElementById('moisture');
+    const phInput = document.getElementById('ph');
+    const fertilizerSelect = document.getElementById('fertilizer');
+    const impactText = document.getElementById('impactText');
+    const cropSuggestion = document.getElementById('cropSuggestion');
+    const moistureValue = document.getElementById('moistureValue');
+    const phValue = document.getElementById('phValue');
+    const languageToggle = document.getElementById('languageToggle');
+
+    const labels = {
+      en: {
+        moisture: "Soil Moisture (%)",
+        ph: "Soil pH",
+        fertilizer: "Fertilizer Type",
+        impact: "Crop Impact",
+        excellent: "Excellent",
+        moderate: "Moderate",
+        poor: "Poor",
+        crops: {
+          excellent: "🌾 Suggested Crops: Rice, Sugarcane, Banana",
+          moderate: "🌿 Suggested Crops: Millets, Groundnut, Cotton",
+          poor: "⚠️ Consider soil improvement before planting"
+        }
+      },
+      ta: {
+        moisture: "மண் ஈரப்பதம் (%)",
+        ph: "மண் pH",
+        fertilizer: "உர வகை",
+        impact: "விவசாய விளைவு",
+        excellent: "சிறந்தது",
+        moderate: "மிதமானது",
+        poor: "மோசமானது",
+        crops: {
+          excellent: "🌾 பரிந்துரைக்கப்படும் பயிர்கள்: அரிசி, கரும்பு, வாழை",
+          moderate: "🌿 பரிந்துரைக்கப்படும் பயிர்கள்: சோளம், நிலக்கடலை, பருத்தி",
+          poor: "⚠️ பயிரிடுவதற்கு முன் மண்ணை மேம்படுத்த பரிந்துரை"
+        }
+      }
+    };
+
+    let currentLang = 'en';
+
+    const ctx = document.getElementById('soilChart').getContext('2d');
+    const soilChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Moisture', 'pH'],
+        datasets: [{
+          label: 'Soil Conditions',
+          data: [moistureInput.value, phInput.value],
+          backgroundColor: ['#3498db', '#2ecc71']
+        }]
+      },
+      options: {
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    function updateImpact() {
+      const moisture = parseInt(moistureInput.value);
+      const ph = parseFloat(phInput.value);
+      const fertilizer = fertilizerSelect.value;
+
+      moistureValue.textContent = `${moisture}%`;
+      phValue.textContent = `${ph}`;
+
+      let impact = labels[currentLang].poor;
+      if (moisture >= 40 && moisture <= 70 && ph >= 6 && ph <= 7.5) {
+        impact = fertilizer === 'none' ? labels[currentLang].moderate : labels[currentLang].excellent;
+      } else if (moisture >= 30 && ph >= 5.5) {
+        impact = labels[currentLang].moderate;
+      }
+
+      impactText.textContent = `${labels[currentLang].impact}: ${impact}`;
+      cropSuggestion.textContent = labels[currentLang].crops[impact.toLowerCase()];
+      soilChart.data.datasets[0].data = [moisture, ph];
+      soilChart.update();
+    }
+
+    function exportCSV() {
+      const moisture = moistureInput.value;
+      const ph = phInput.value;
+      const fertilizer = fertilizerSelect.value;
+      const impact = impactText.textContent;
+      const crops = cropSuggestion.textContent;
+
+      const csv = `Moisture,pH,Fertilizer,Impact,Crop Suggestion\n${moisture},${ph},${fertilizer},"${impact}","${crops}"`;
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "soil_report.csv";
+      link.click();
+    }
+
+    languageToggle.addEventListener('change', (e) => {
+      currentLang = e.target.value;
+      document.getElementById('labelMoisture').textContent = labels[currentLang].moisture;
+      document.getElementById('labelPh').textContent = labels[currentLang].ph;
+      document.getElementById('labelFertilizer').textContent = labels[currentLang].fertilizer;
+      updateImpact();
+    });
+
+    moistureInput.addEventListener('input', updateImpact);
+    phInput.addEventListener('input', updateImpact);
+    fertilizerSelect.addEventListener('change', updateImpact);
+
+    updateImpact();
+
+    // PWA registration
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("service-worker.js")
+        .then(() => console.log("✅ Service Worker Registered"))
+        .catch(err => console.error("Service Worker Error:", err));
+    }
+  </script>
+</body>
+</html>
